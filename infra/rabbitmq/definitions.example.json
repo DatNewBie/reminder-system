@@ -1,0 +1,160 @@
+{
+  "rabbit_version": "3.13.0",
+  "rabbitmq_version": "3.13.0",
+  "users": [
+    {
+      "name": "your_username_here",
+      "password": "your_password_here",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "your_username_here",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [
+    {
+      "name": "internal_cluster_id",
+      "value": "rabbitmq-cluster-id-reminder-system"
+    }
+  ],
+  "policies": [],
+  "queues": [
+    {
+      "name": "reminder.email.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "reminder.dlx",
+        "x-dead-letter-routing-key": "reminder.email.dlq",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "reminder.sms.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "reminder.dlx",
+        "x-dead-letter-routing-key": "reminder.sms.dlq",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "reminder.push.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "reminder.dlx",
+        "x-dead-letter-routing-key": "reminder.push.dlq",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "reminder.email.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "reminder.sms.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "reminder.push.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "reminder.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "reminder.dlx",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "reminder.exchange",
+      "vhost": "/",
+      "destination": "reminder.email.queue",
+      "destination_type": "queue",
+      "routing_key": "reminder.email",
+      "arguments": {}
+    },
+    {
+      "source": "reminder.exchange",
+      "vhost": "/",
+      "destination": "reminder.sms.queue",
+      "destination_type": "queue",
+      "routing_key": "reminder.sms",
+      "arguments": {}
+    },
+    {
+      "source": "reminder.exchange",
+      "vhost": "/",
+      "destination": "reminder.push.queue",
+      "destination_type": "queue",
+      "routing_key": "reminder.push",
+      "arguments": {}
+    },
+    {
+      "source": "reminder.dlx",
+      "vhost": "/",
+      "destination": "reminder.email.dlq",
+      "destination_type": "queue",
+      "routing_key": "reminder.email.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "reminder.dlx",
+      "vhost": "/",
+      "destination": "reminder.sms.dlq",
+      "destination_type": "queue",
+      "routing_key": "reminder.sms.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "reminder.dlx",
+      "vhost": "/",
+      "destination": "reminder.push.dlq",
+      "destination_type": "queue",
+      "routing_key": "reminder.push.dlq",
+      "arguments": {}
+    }
+  ]
+}

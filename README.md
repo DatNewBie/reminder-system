@@ -40,7 +40,28 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-### 3. Start infrastructure
+### 3. Setup RabbitMQ definitions
+
+```bash
+cp infra/rabbitmq/definitions.example.json infra/rabbitmq/definitions.json
+```
+
+Edit `infra/rabbitmq/definitions.json` and replace:
+- `your_username_here` with your RabbitMQ username (default: `guest`)
+- `your_password_here` with your RabbitMQ password (default: `guest`)
+
+**For development**, you can use:
+```json
+{
+  "name": "guest",
+  "password": "guest",
+  "tags": ["administrator"]
+}
+```
+
+**Security Note**: Never commit `definitions.json` to git as it contains credentials.
+
+### 4. Start infrastructure
 
 ```bash
 docker-compose up -d
@@ -49,14 +70,16 @@ docker-compose up -d
 This will start:
 - PostgreSQL (port 5432)
 - pgAdmin (port 5050)
+- Redis (port 6379)
+- RabbitMQ (port 5672, Management UI: 15672)
 
-### 4. Sync environment to services
+### 5. Sync environment to services
 
 ```bash
 .\sync-env.bat
 ```
 
-### 5. Run services
+### 6. Run services
 
 Each service can be run independently:
 
@@ -96,6 +119,10 @@ Migrations are managed by Flyway and run automatically on startup.
 - **pgAdmin**: http://localhost:5050
   - Email: admin@reminder.com
   - Password: admin
+- **RabbitMQ Management**: http://localhost:15672
+  - Username: guest
+  - Password: guest
+- **Redis**: localhost:6379
 
 ## 📚 Documentation
 
