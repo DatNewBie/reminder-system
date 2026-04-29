@@ -88,3 +88,6 @@ docs/
 # Docker volumes (local development)
 postgres_data/
 pgadmin_data/
+
+# RabbitMQ definitions with credentials
+infra/rabbitmq/definitions.json
