@@ -4,9 +4,10 @@ A distributed microservices-based recurring reminder system built with Spring Bo
 
 ## 🏗️ Architecture
 
-- **api-gateway** (port 8080) - Spring Cloud Gateway with JWT authentication
-- **reminder-service** (port 8081) - User authentication & reminder CRUD operations
-- **scheduler-service** - Background job polling reminders and publishing to message queue
+- **api-gateway** (port 8080) - Spring Cloud Gateway with JWT verification
+- **auth-service** (port 8084) - User authentication & JWT token generation
+- **reminder-service** (port 8081) - Reminder CRUD operations with RRULE support
+- **scheduler-service** (port 8082) - Background job polling reminders and publishing to message queue
 - **notification-service** (port 8083) - Consumes messages and dispatches notifications
 
 ## 🚀 Tech Stack
@@ -37,7 +38,17 @@ cd reminder-system
 
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
+```
+
+Edit `.env` and update the following:
+- Database credentials (POSTGRES_USER, POSTGRES_PASSWORD)
+- **JWT_SECRET** - Change to a secure random string (minimum 32 characters)
+- Service ports if needed
+
+**Example JWT_SECRET generation:**
+```bash
+# Use a random string generator or create your own secure key
+JWT_SECRET=your-secure-random-256-bit-secret-key-here-change-this
 ```
 
 ### 3. Setup RabbitMQ definitions
@@ -79,24 +90,34 @@ This will start:
 .\sync-env.bat
 ```
 
-### 6. Run services
+### 6. Build all services
+
+```bash
+.\mvnw.cmd clean install -DskipTests
+```
+
+### 7. Run services
 
 Each service can be run independently:
 
 ```bash
-# Terminal 1 - Reminder Service
+# Terminal 1 - Auth Service
+cd auth-service
+.\mvnw.cmd spring-boot:run
+
+# Terminal 2 - Reminder Service
 cd reminder-service
 .\mvnw.cmd spring-boot:run
 
-# Terminal 2 - Notification Service
+# Terminal 3 - Notification Service
 cd notification-service
 .\mvnw.cmd spring-boot:run
 
-# Terminal 3 - Scheduler Service
+# Terminal 4 - Scheduler Service
 cd scheduler-service
 .\mvnw.cmd spring-boot:run
 
-# Terminal 4 - API Gateway
+# Terminal 5 - API Gateway
 cd api-gateway
 .\mvnw.cmd spring-boot:run
 ```
@@ -105,7 +126,7 @@ cd api-gateway
 
 The system uses three main tables:
 
-- **users** - User accounts with BCrypt password hashing
+- **users** - User accounts with BCrypt password hashing (managed by auth-service)
 - **reminders** - One-time and recurring reminders with RRULE support
 - **execution_logs** - Audit trail with idempotency guarantees
 
@@ -114,14 +135,16 @@ Migrations are managed by Flyway and run automatically on startup.
 ## 🔗 Access Points
 
 - **API Gateway**: http://localhost:8080
+- **Auth Service**: http://localhost:8084
 - **Reminder Service**: http://localhost:8081
+- **Scheduler Service**: http://localhost:8082
 - **Notification Service**: http://localhost:8083
 - **pgAdmin**: http://localhost:5050
-  - Email: admin@reminder.com
-  - Password: admin
+  - Email: (configured in .env)
+  - Password: (configured in .env)
 - **RabbitMQ Management**: http://localhost:15672
-  - Username: guest
-  - Password: guest
+  - Username: (configured in .env)
+  - Password: (configured in .env)
 - **Redis**: localhost:6379
 
 ## 📚 Documentation
@@ -132,9 +155,30 @@ Migrations are managed by Flyway and run automatically on startup.
 
 ## 🔐 Security
 
-- JWT-based authentication at API Gateway
-- BCrypt password hashing (cost factor 12)
-- X-User-Id header injection for downstream services
+- **JWT Authentication**: Auth-service generates JWT tokens (access + refresh)
+- **API Gateway**: Verifies JWT tokens on all requests (except /api/auth/**)
+- **BCrypt Password Hashing**: Cost factor 10 for secure password storage
+- **Token Expiration**: Access token (1 hour), Refresh token (24 hours)
+- **Stateless Sessions**: No server-side session storage
+
+### Authentication Flow
+
+1. **Register/Login**: POST to `/api/auth/register` or `/api/auth/login`
+2. **Receive Tokens**: Get `accessToken` and `refreshToken` in response
+3. **Access Protected Routes**: Include header: `Authorization: Bearer <accessToken>`
+4. **Refresh Token**: POST to `/api/auth/refresh` with refresh token when access token expires
+
+### API Endpoints
+
+**Auth Service (via API Gateway)**
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login and get tokens
+- `POST /api/auth/refresh` - Refresh access token
+
+**Protected Routes** (require JWT)
+- `/api/reminders/**` - Reminder operations
+- `/api/scheduler/**` - Scheduler operations
+- `/api/notifications/**` - Notification operations
 
 ## 🎯 Key Features
 

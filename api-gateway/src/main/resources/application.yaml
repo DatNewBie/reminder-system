@@ -7,3 +7,22 @@ spring:
   dotenv:
     enabled: true
     filename: .env
+
+jwt:
+  secret: ${JWT_SECRET}
+
+services:
+  auth:
+    url: ${AUTH_SERVICE_URL:http://localhost:8084}
+  reminder:
+    url: ${REMINDER_SERVICE_URL:http://localhost:8081}
+  scheduler:
+    url: ${SCHEDULER_SERVICE_URL:http://localhost:8082}
+  notification:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8083}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
