@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -34,5 +36,18 @@ public class AuthController {
         String refreshToken = authHeader.replace("Bearer ", "");
         AuthResponse response = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authHeader) {
+        String refreshToken = authHeader.replace("Bearer ", "");
+        authService.logout(refreshToken);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/logout-all")
+    public ResponseEntity<Void> logoutAll(@RequestParam UUID userId) {
+        authService.logoutAllDevices(userId);
+        return ResponseEntity.noContent().build();
     }
 }

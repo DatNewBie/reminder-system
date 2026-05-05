@@ -1,6 +1,6 @@
 CREATE TABLE reminders (
     id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id       UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id       UUID        NOT NULL,
     title         VARCHAR(255) NOT NULL,
     message       TEXT,
     rrule         TEXT,
