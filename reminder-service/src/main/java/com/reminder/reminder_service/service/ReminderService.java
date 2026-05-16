@@ -9,6 +9,7 @@ import com.reminder.reminder_service.exception.ReminderNotFoundException;
 import com.reminder.reminder_service.exception.RruleValidationException;
 import com.reminder.reminder_service.repository.ReminderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.fortuna.ical4j.model.DateList;
 import net.fortuna.ical4j.model.DateTime;
 import net.fortuna.ical4j.model.Recur;
@@ -24,12 +25,14 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReminderService {
 
     private final ReminderRepository reminderRepository;
 
     @Transactional
     public ReminderResponse createReminder(UUID userId, CreateReminderRequest req) {
+        log.info("Creating reminder for user: {}, title: {}", userId, req.getTitle());
         validateRrule(req.getRrule());
 
         Reminder reminder = new Reminder();
@@ -41,7 +44,9 @@ public class ReminderService {
         reminder.setNextRunTime(req.getStartTime());
         reminder.setIsActive(true);
 
-        return toResponse(reminderRepository.save(reminder));
+        Reminder saved = reminderRepository.save(reminder);
+        log.info("Created reminder with id: {} for user: {}", saved.getId(), userId);
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -59,6 +64,7 @@ public class ReminderService {
 
     @Transactional
     public ReminderResponse updateReminder(UUID userId, UUID id, UpdateReminderRequest req) {
+        log.info("Updating reminder: {} for user: {}", id, userId);
         validateRrule(req.getRrule());
 
         Reminder reminder = findOwnedReminder(userId, id);
@@ -76,13 +82,61 @@ public class ReminderService {
 
     @Transactional
     public void deleteReminder(UUID userId, UUID id) {
+        log.info("Deleting reminder: {} for user: {}", id, userId);
         Reminder reminder = findOwnedReminder(userId, id);
         reminderRepository.delete(reminder);
+        log.info("Deleted reminder: {}", id);
     }
 
     public List<OffsetDateTime> previewReminder(PreviewReminderRequest req) {
         validateRrule(req.getRrule());
         return computeOccurrences(req.getRrule(), req.getStartTime(), req.getCount());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Reminder> findDueReminders(OffsetDateTime now) {
+        log.debug("Finding due reminders at: {}", now);
+        List<Reminder> reminders = reminderRepository.findDueReminders(now);
+        log.info("Found {} due reminders", reminders.size());
+        return reminders;
+    }
+
+    @Transactional
+    public void updateNextRunTime(UUID reminderId, OffsetDateTime nextRunTime) {
+        log.info("Updating next run time for reminder: {} to: {}", reminderId, nextRunTime);
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .orElseThrow(() -> new ReminderNotFoundException(reminderId));
+        reminder.setNextRunTime(nextRunTime);
+        reminderRepository.save(reminder);
+        log.debug("Updated next run time for reminder: {}", reminderId);
+    }
+
+    public OffsetDateTime computeNextOccurrence(String rrule, OffsetDateTime currentTime) {
+        log.debug("Computing next occurrence for rrule: {} from: {}", rrule, currentTime);
+        if (rrule == null || rrule.isBlank()) {
+            log.debug("No rrule provided, returning null");
+            return null;
+        }
+        
+        try {
+            Recur recur = new Recur(rrule);
+            DateTime seed = new DateTime(currentTime.toInstant().toEpochMilli());
+            DateTime periodStart = seed;
+            DateTime periodEnd = new DateTime(currentTime.plusYears(5).toInstant().toEpochMilli());
+            
+            DateList dates = recur.getDates(seed, periodStart, periodEnd, Value.DATE_TIME);
+            
+            OffsetDateTime nextOccurrence = dates.stream()
+                    .map(d -> OffsetDateTime.ofInstant(Instant.ofEpochMilli(d.getTime()), ZoneOffset.UTC))
+                    .filter(dt -> dt.isAfter(currentTime))
+                    .findFirst()
+                    .orElse(null);
+            log.debug("Computed next occurrence: {}", nextOccurrence);
+            return nextOccurrence;
+        } catch (Exception e) {
+            log.error("Error computing next occurrence for rrule: {}", rrule, e);
+            throw new RruleValidationException(rrule, e.getMessage());
+        }
     }
 
     private Reminder findOwnedReminder(UUID userId, UUID id) {
@@ -100,11 +154,18 @@ public class ReminderService {
     }
 
     private List<OffsetDateTime> computeOccurrences(String rrule, OffsetDateTime startTime, int count) {
+        if (rrule == null || rrule.isBlank()) {
+            return List.of(startTime);
+        }
+        
         try {
             Recur recur = new Recur(rrule);
             DateTime seed = new DateTime(startTime.toInstant().toEpochMilli());
+            DateTime periodStart = seed;
             DateTime periodEnd = new DateTime(startTime.plusYears(5).toInstant().toEpochMilli());
-            DateList dates = recur.getDates(seed, seed, periodEnd, Value.DATE_TIME);
+            
+            DateList dates = recur.getDates(seed, periodStart, periodEnd, Value.DATE_TIME);
+            
             return dates.stream()
                     .limit(count)
                     .map(d -> OffsetDateTime.ofInstant(Instant.ofEpochMilli(d.getTime()), ZoneOffset.UTC))
